@@ -36,7 +36,13 @@
             </form>
 
             <div class="text-center mt-1">
-                <span class="small-text link-text" id="toggle-auth-mode">New Agent? Initialize Identity</span>
+                <button type="button"
+                        id="toggle-auth-mode"
+                        class="small-text link-text"
+                        onclick="System.toggleMode()"
+                        style="background:none;border:none;padding:0;cursor:pointer;">
+                    New Agent? Initialize Identity
+                </button>
             </div>
             
             <div id="login-status" class="text-center mt-1 small-text text-accent hidden"></div>
@@ -256,4 +262,4 @@
     <script src="js/candidate.js"></script>
     <script src="js/app.js"></script>
 </body>
-</html>
+            </html>

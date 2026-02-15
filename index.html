@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0d6efd">
     <title>NexQuiz Portal | Command Engine v5.1</title>
     <script>const APP_VERSION = "5.1.0-monitor-fixed";</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2346,6 +2348,20 @@
             document.body.appendChild(foot);
         });
     </script>
+    <script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js')
+      .then(function (registration) {
+        console.log('Service Worker Registered:', registration.scope);
+      })
+      .catch(function (error) {
+        console.log('Service Worker Registration Failed:', error);
+      });
+  });
+}
+    </script>
 </body>
+
 
 </html>

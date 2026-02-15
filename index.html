@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NexQuiz Portal | Command Engine v5.1</title>
+    <script>const APP_VERSION = "5.1.0-monitor-fixed";</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* 🛡️ ANTI-SCREENSHOT & ANTI-PRINT PROTECTION */
+        @media print {
+            body {
+                display: none !important;
+            }
+        }
+
+        #security-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--primary);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 🔍 LIGHTBOX / ZOOM FEATURE */
+        #lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 20000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        #lightbox img {
+            max-width: 95%;
+            max-height: 85%;
+            object-fit: contain;
+            transition: transform 0.3s ease-out;
+            cursor: zoom-in;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            z-index: 101;
+            padding: 10px;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 30px;
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .zoom-btn {
+            cursor: pointer;
+            font-size: 1.5rem;
+            opacity: 0.8;
+            transition: 0.2s;
+        }
+
+        .zoom-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .q-img-msg {
+            font-size: 0.7rem;
+            color: var(--accent);
+            text-align: center;
+            margin-top: -5px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .card {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 📱 MOBILE NAVIGATION (ADMIN) */
+        .admin-nav {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            overflow-x: auto;
+            gap: 0.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            scrollbar-width: none;
+        }
+
+        .admin-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .admin-nav div {
+            white-space: nowrap;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            opacity: 0.7;
+        }
+
+        .admin-nav .active {
+            background: var(--accent);
+            border-color: var(--accent);
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        main {
+            padding: 1rem;
+            flex-grow: 1;
+            padding-bottom: 5rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.4rem 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #fff;
+        }
+
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* 📊 DASHBOARD COMPONENTS */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .stat-val {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: #f8fafc;
+            color: #64748b;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* 📝 EXAM INTERFACE */
+        .exam-header {
+            background: var(--surface);
+            border-bottom: 2px solid var(--accent);
+            padding: 0.8rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        .q-img {
+            width: 100%;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid var(--border);
+            max-height: 200px;
+            object-fit: contain;
+        }
+
+        .option-label {
+            display: block;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.8rem;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .option-label:has(input:checked) {
+            border-color: var(--accent);
+            background: #f0f7ff;
+            border-width: 2px;
+        }
+
+        #toast-container {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            left: 15px;
+            z-index: 10001;
+            pointer-events: none;
+        }
+
+        .toast {
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 📱 RESPONSIVE FIXES */
+        @media (max-width: 768px) {
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .exam-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            #ex-timer {
+                font-size: 1rem;
+            }
+
+            .admin-nav {
+                padding: 0.5rem;
+            }
+
+            .btn {
+                font-size: 0.85rem;
+                padding: 0.6rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            /* Manager Controls Stacking */
+            #mgr-editor .btn {
+                width: 100% !important;
+                margin-bottom: 5px;
+            }
+
+            #mgr-editor div[style*="display:flex"] {
+                flex-direction: column;
+            }
+
+            /* Security Rules Stacking */
+            #e-edit-max-v {
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="security-overlay">
+        <h2>[SECURITY BLACKOUT]</h2>
+        <p style="margin-top:10px;">Window focus lost or unauthorized capture detected.</p>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <section id="view-login"
+        style="height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; background: var(--primary);">
+        <div class="card" style="width:100%; max-width:400px;">
+            <h2 style="text-align:center; margin-bottom:1rem;">Command Portal</h2>
+            <select id="login-role" onchange="UI.toggleLoginFields()">
+                <option value="candidate">Candidate Entry</option>
+                <option value="admin">Admin Command</option>
+            </select>
+            <div id="candidate-fields">
+                <input type="text" id="log-room-id" placeholder="Room ID">
+                <input type="password" id="log-room-pass" placeholder="Room Password">
+                <input type="text" id="log-team-id" placeholder="Team ID (Identity)">
+            </div>
+            <div id="admin-fields" class="hidden">
+                <input type="email" id="log-email" placeholder="Email Address">
+                <input type="password" id="log-password" placeholder="Access Key">
+            </div>
+            <button class="btn btn-primary" onclick="System.login()" style="margin-top:1rem;">Authenticate</button>
+        </div>
+    </section>
+
+    <section id="view-admin" class="hidden">
+        <nav class="admin-nav">
+            <div class="active" onclick="UI.showTab('dashboard')">Dashboard</div>
+            <div onclick="UI.showTab('factory')">Event Factory</div>
+            <div onclick="UI.showTab('manager')">Round Manager</div>
+            <div onclick="UI.showTab('monitor')">Live Monitor</div>
+            <div onclick="UI.showTab('security')">Anti-Cheat</div>
+            <div onclick="UI.showTab('leaderboard')">Leaderboard</div>
+            <div style="color:var(--danger)" onclick="System.logout()">Logout</div>
+        </nav>
+
+        <div class="card"
+            style="margin: 0.5rem 1rem; padding: 0.8rem; border: 2px solid var(--accent); background: #fef2f2;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div style="font-weight:bold; color:var(--accent); display:flex; align-items:center; gap:5px;">
+                    <span style="font-size:1.2rem;">🎯</span> COMMAND FOCUS:
+                </div>
+                <select id="mgr-event-select" onchange="Admin.sync()"
+                    style="flex:1; min-width:200px; padding:8px; border-radius:6px; border:1px solid var(--border); font-weight:600;">
+                    <option value="">Select an Active Round to Manage...</option>
+                </select>
+                <div style="font-size:0.7rem; opacity:0.6; font-style:italic;">
+                    Selection applies to Monitor, Manager, and Leaderboard.
+                </div>
+            </div>
+        </div>
+
+        <main id="admin-main">
+            <div id="tab-dashboard">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Players</div>
+                        <div class="stat-val" id="st-total">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Online Now</div>
+                        <div class="stat-val" id="st-online" style="color:var(--success)">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Active Events</div>
+                        <div class="stat-val" id="st-events" style="color:var(--accent)">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">System Health</div>
+                        <div class="stat-val" style="color:var(--success); font-size:0.8rem;">NOMINAL</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-factory" class="hidden">
+                <div class="card">
+                    <h3>1. Event Identity</h3>
+                    <input type="text" id="f-room-id" placeholder="Room ID">
+                    <input type="password" id="f-room-pass" placeholder="Room Password">
+                    <input type="text" id="f-round-name" placeholder="Round Title">
+                    <div style="display:flex; gap:0.5rem;">
+                        <input type="number" id="f-time" placeholder="Mins">
+                        <input type="number" id="f-marks" placeholder="+Marks">
+                        <input type="number" id="f-neg" placeholder="-Neg">
+                    </div>
+                    <button class="btn btn-primary" onclick="Admin.createEvent()">Create Event</button>
+                    <!-- Status or Active toggle could be here if schema supported it -->
+                </div>
+                <div class="card">
+                    <h3>2. Question Designer</h3>
+                    <div
+                        style="background:#e0f2fe; padding:0.5rem; font-size:0.8rem; margin-bottom:0.5rem; border-radius:4px;">
+                        ℹ️ <strong>Note:</strong> Scoring is now controlled by Event Config.
+                    </div>
+
+                    <select id="q-target-event" style="margin-bottom:0.5rem; border-color:var(--accent);">
+                        <option value="">Select Target Event...</option>
+                    </select>
+
+                    <textarea id="q-text" placeholder="Question statement..."></textarea>
+
+                    <div style="display:flex; gap:5px; align-items:center; margin-bottom:0.5rem;">
+                        <input type="text" id="q-img-url" placeholder="Image URL (Optional)" style="flex:1;">
+                        <input type="file" id="q-img-file" class="hidden" accept="image/*"
+                            onchange="Admin.uploadImage(this)">
+                        <button class="btn btn-outline" style="width:auto; padding:0.5rem;"
+                            onclick="document.getElementById('q-img-file').click()">
+                            📁 Upload
+                        </button>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                        <input type="text" class="q-opt" placeholder="Option A">
+                        <input type="text" class="q-opt" placeholder="Option B">
+                        <input type="text" class="q-opt" placeholder="Option C">
+                        <input type="text" class="q-opt" placeholder="Option D">
+                    </div>
+                    <!-- Simple index based correct option -->
+                    <select id="q-correct">
+                        <option value="">Select Correct Option</option>
+                        <option value="0">Option A</option>
+                        <option value="1">Option B</option>
+                        <option value="2">Option C</option>
+                        <option value="3">Option D</option>
+                    </select>
+                    <input type="text" id="q-hint" placeholder="Hint text...">
+                    <div style="display:flex; gap:10px;">
+                        <button id="btn-save-q" class="btn btn-primary" onclick="Admin.addQuestion()">+ Add to
+                            Bank</button>
+                        <button id="btn-cancel-q" class="btn btn-danger hidden" onclick="Admin.cancelEdit()">Cancel
+                            Edit</button>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <div id="tab-manager" class="hidden">
+                <div class="card">
+                    <h3>3. Round Manager</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-primary" onclick="Admin.loadEventsForManager()">🔄 Refresh List</button>
+                    </div>
+
+                    <div id="mgr-editor" class="hidden"
+                        style="margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                        <h4>⚙️ Event Config</h4>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <input type="number" id="e-edit-marks" placeholder="Marks" style="flex:1;">
+                            <input type="number" id="e-edit-neg" placeholder="Neg Marks" style="flex:1;">
+                            <input type="number" id="e-edit-time" placeholder="Mins" style="flex:1;">
+                            <div style="flex:1; display:flex; flex-direction:column; min-width:150px;">
+                                <label style="font-size:0.6rem; color:#666; margin-bottom:2px;">Global Start Time (For
+                                    Comp.)</label>
+                                <input type="datetime-local" id="e-edit-start" style="width:100%;">
+                            </div>
+                            <button class="btn btn-success" style="width:auto;" onclick="Admin.saveEventConfig()">Save
+                                Config</button>
+                            <button class="btn btn-warning" id="btn-pause-event" style="width:auto;"
+                                onclick="Admin.toggleEventStatus()">⏸️ Pause Event</button>
+                        </div>
+
+                        <div style="margin-top:1rem; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div style="padding:10px; background:#f8f9fa; border-radius:8px; border:1px solid #eee;">
+                                <small><strong>🛡️ Security Rules:</strong></small><br>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:5px;">
+                                    <div style="grid-column: span 2;">
+                                        <input type="number" id="e-edit-max-v" placeholder="Max Violations (3)"
+                                            style="padding:5px;">
+                                    </div>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-tab"> Tab
+                                        Switch</label>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-resize">
+                                        Resize</label>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-dev">
+                                        DevTools</label>
+                                    <label style="font-size:0.8rem; color:#d9534f;"><input type="checkbox"
+                                            id="e-chk-ip"> 🔒 IP Lock</label>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-kb"> ⌨️ Keyboard
+                                        Det.</label>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-ss"> 📸
+                                        Anti-Screenshot</label>
+                                    <label style="font-size:0.8rem; color:var(--accent); font-weight:bold;">
+                                        <input type="checkbox" id="e-chk-comp"> 🏆 Competition Mode
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="padding:10px; background:#f0f9ff; border-radius:8px; border:1px solid #bae6fd;">
+                                <small><strong>📊 Leaderboard Controls:</strong></small><br>
+                                <div style="display:flex; flex-direction:column; gap:8px; margin-top:5px;">
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-hide-lb"> 👁️ Hide
+                                        from Candidates</label>
+                                    <label style="font-size:0.8rem;"><input type="checkbox" id="e-chk-freeze-lb"> ❄️
+                                        Freeze (Stop Live Updates)</label>
+                                    <div style="margin-top:5px;">
+                                        <input type="number" id="e-edit-qualifiers" placeholder="Qualifiers (e.g. 50)"
+                                            style="padding:5px; width:100%; font-size:0.8rem;">
+                                    </div>
+                                    <button class="btn btn-primary" id="btn-publish-results"
+                                        style="margin-top:5px; font-size:0.8rem; padding:5px;"
+                                        onclick="Admin.publishResults()">📢 Publish Results</button>
+                                    <button class="btn btn-danger"
+                                        style="margin-top:5px; font-size:0.8rem; padding:5px; background:#ef4444;"
+                                        onclick="Admin.clearRoundData()">🗑️ Clear Round Logs</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-danger" style="margin-top:15px;" onclick="Admin.deleteEvent()">🗑️ DELETE
+                            EVENT</button>
+
+                        <h4 style="margin-top:1.5rem;">📝 Question Bank</h4>
+                        <div id="mgr-q-list"
+                            style="max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:0.5rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-monitor" class="hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>Live Violation Logs</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-outline" style="width:auto; padding:5px 10px; font-size:0.8rem;"
+                            onclick="Admin.syncLogs()">🔄 Sync Now</button>
+                        <button class="btn-danger"
+                            style="width:auto; padding:5px 10px; font-size:0.8rem; background:#fee2e2; color:#b91c1c;"
+                            onclick="Admin.clearRoundData()">🧹 Sweep Round Logs</button>
+                    </div>
+                </div>
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Violation</th>
+                                <th>Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitor-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-security" class="hidden">
+                <!-- Features preserved from simpy.html as simple toggles for current admin session or global config -->
+                <div class="card">
+                    <h3>Global Security Protocols</h3>
+                    <label><input type="checkbox" checked onchange="Admin.updateSecurity(this)"> Fullscreen Mode
+                        Enforcement</label><br><br>
+                    <label><input type="checkbox" checked onchange="Admin.updateSecurity(this)"> Detect Tab Switch
+                        (Blackout)</label><br><br>
+                    <button class="btn btn-primary">Update Rules</button>
+                </div>
+            </div>
+
+            <div id="tab-leaderboard" class="hidden">
+                <h3>Top Performers</h3>
+                <div class="card" style="padding:0; overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <section id="view-exam" class="hidden">
+        <header class="exam-header">
+            <div>
+                <strong id="ex-user">Candidate</strong><br>
+                <small id="ex-room">Live Exam</small>
+            </div>
+            <div id="ex-timer" style="font-weight:bold; color:var(--danger); font-size:1.4rem;">--:--</div>
+            <div style="text-align:right;">
+                <span id="ex-violations" style="font-weight:bold; color:var(--warning); display:block;">Warnings:
+                    0/3</span>
+                <button class="btn btn-primary"
+                    style="width:auto; padding:0.2rem 0.5rem; font-size:0.8rem; background:var(--border); color:#333;"
+                    onclick="Candidate.submitSession()">Finish</button>
+            </div>
+        </header>
+        <main>
+            <div id="exam-q-box" class="card">
+                <div id="q-img-area"></div>
+                <div id="q-img-zoom-hint" class="q-img-msg hidden">🔍 Click image to zoom & inspect</div>
+                <h3 id="q-txt" style="margin-bottom:1.5rem;">Loading...</h3>
+                <div id="opt-area"></div>
+            </div>
+
+            <!-- 🔍 LIGHTBOX MODAL (Scoped inside Exam Section) -->
+            <div id="lightbox">
+                <div class="lightbox-close" onclick="Candidate.closeLightbox()">&times;</div>
+                <img id="lightbox-img" src="" alt="Zoomed Question Image">
+                <div class="zoom-controls">
+                    <span class="zoom-btn" onclick="Candidate.adjustZoom(-0.2)">➖</span>
+                    <span id="zoom-level">100%</span>
+                    <span class="zoom-btn" onclick="Candidate.adjustZoom(0.2)">➕</span>
+                    <span class="zoom-btn" onclick="Candidate.resetZoom()"
+                        style="margin-left:10px; font-size:1rem; align-self:center;">RESET</span>
+                </div>
+            </div>
+        </main>
+
+        <div id="exam-leaderboard" class="card hidden">
+            <h3>🏆 Active Leaderboard</h3>
+            <div id="ex-lb-status" style="margin-bottom:10px; font-size:0.9rem; color:var(--accent);"></div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="ex-lb-body"></tbody>
+            </table>
+        </div>
+
+        <div id="hint-box" class="hidden card" style="background:#fffbeb; font-size:0.85rem;"></div>
+        <div id="exam-nav-btns" style="display:flex; justify-content:space-between; margin-top:1rem;">
+            <button class="btn btn-outline" style="width:auto;" onclick="Candidate.prev()" id="btn-prev">⬅️
+                Prev</button>
+            <button class="btn btn-primary" style="width:auto;" onclick="Candidate.next()" id="btn-next">Next ➔</button>
+        </div>
+
+        <div style="margin-top:1rem; display:flex; gap:10px; justify-content:center;">
+            <button class="btn btn-outline" style="width:auto; font-size:0.8rem;" onclick="Candidate.showHint()">💡
+                Hint</button>
+            <button class="btn btn-outline hidden" style="width:auto; font-size:0.8rem;"
+                onclick="Candidate.toggleLeaderboard()" id="btn-ex-lb">🏆 View Leaderboard</button>
+        </div>
+    </section>
+
+    <div id="view-lock" class="hidden"
+        style="position:fixed; inset:0; background:white; z-index:20000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem; text-align:center;">
+        <h1 id="lock-status" style="font-size:2.5rem; margin-bottom:1rem; font-weight: 800;"></h1>
+        <div id="final-result" class="card hidden" style="width:100%; max-width:400px; margin-bottom: 2rem;"></div>
+
+        <!-- Results Leaderboard Section (Visible after submission) -->
+        <div id="lock-leaderboard-container" class="hidden card"
+            style="width:100%; max-width:500px; margin-top:1rem; max-height: 45vh; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+            <h3 style="margin-bottom:10px;">🏆 Rank Standings</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="lock-lb-body"></tbody>
+            </table>
+        </div>
+
+        <div style="margin-top:2rem; display:flex; gap:10px;">
+            <button class="btn btn-primary" onclick="location.reload()" style="width:auto;">🔄 Refresh Status</button>
+            <button class="btn btn-outline" onclick="UI.switchView('view-login')" style="width:auto;">🚪 Logout</button>
+        </div>
+    </div>
+
+    <script>
+        /** * 🚀 SUPABASE CONFIGURATION */
+        const SUPABASE_URL = "https://gbhmfolwlnlokminsgaj.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_RGIXmLHeKTdZH_UL4NA1pQ_V8UdRD7t";
+        const { createClient } = supabase;
+        const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        /** * 🧠 SYSTEM MODULES */
+        const System = {
+            state: { user: null, role: null, session_id: null, room_id: null },
+
+            login: async () => {
+                const role = document.getElementById('login-role').value;
+                const btn = document.querySelector('.btn-primary');
+                let finalEmail, finalPass;
+
+                if (role === 'admin') {
+                    finalEmail = document.getElementById('log-email').value;
+                    finalPass = document.getElementById('log-password').value;
+                    if (!finalEmail || !finalPass) return UI.toast("Enter Email & Password", "warning");
+                } else {
+                    const teamId = document.getElementById('log-team-id').value;
+                    const roomId = document.getElementById('log-room-id').value;
+                    const roomPass = document.getElementById('log-room-pass').value;
+
+                    if (!teamId || !roomId || !roomPass) return UI.toast("Fill all fields", "warning");
+
+                    finalEmail = `team_${teamId.toLowerCase().trim()}@nexus.team`;
+                    finalPass = "TeamAccess2026!"; // Internal static pass
+
+                    System.state.room_id = roomId;
+                    sessionStorage.setItem('nexquiz_room_id', roomId);
+                    sessionStorage.setItem('nexquiz_room_pass', roomPass);
+                    sessionStorage.setItem('nexquiz_team_id', teamId);
+                }
+
+                btn.innerHTML = 'Authenticating...'; btn.disabled = true;
+
+                try {
+                    // 1. Try Login
+                    let { data, error } = await sb.auth.signInWithPassword({ email: finalEmail, password: finalPass });
+
+                    // 2. Auto-Register Candidate (if newbie)
+                    if (error && role === 'candidate' && (error.message.includes("Invalid login credentials") || error.message.includes("not found"))) {
+                        const { data: suData, error: suError } = await sb.auth.signUp({
+                            email: finalEmail,
+                            password: finalPass,
+                            options: { data: { full_name: document.getElementById('log-team-id').value, role: 'candidate' } }
+                        });
+                        if (suError) throw suError;
+                        data = suData;
+                        error = null;
+                    }
+
+                    if (error) throw error;
+                    await System.handleAuth(data.user);
+
+                } catch (e) {
+                    UI.toast(e.message || "Authentication Failed", "danger");
+                } finally {
+                    btn.innerHTML = 'Authenticate'; btn.disabled = false;
+                }
+            },
+
+            handleAuth: async (user) => {
+                System.state.user = user;
+                const loginRole = document.getElementById('login-role').value;
+
+                // 1. Check Admin status via RPC
+                const { data: isAdmin, error: adminErr } = await sb.rpc('is_admin');
+
+                if (adminErr) {
+                    console.error("RPC Error:", adminErr);
+                    UI.toast("Authorization System Error: " + adminErr.message, "danger");
+                    throw adminErr;
+                }
+
+                if (isAdmin) {
+                    System.state.role = 'ADMIN';
+                    UI.switchView('view-admin');
+                    Admin.init();
+                } else {
+                    if (loginRole === 'admin') {
+                        UI.toast("Unauthorized Admin Access", "danger");
+                        await sb.auth.signOut();
+                        return UI.switchView('view-login');
+                    }
+
+                    System.state.role = 'CANDIDATE';
+
+                    // ⛓️ CROSS-ROUND DISQUALIFICATION CHECK
+                    const { data: dqData } = await sb.from('sessions')
+                        .select('id')
+                        .eq('player_name', user.email)
+                        .eq('status', 'DISQUALIFIED')
+                        .limit(1);
+
+                    if (dqData && dqData.length > 0) {
+                        UI.switchView('view-lock');
+                        document.getElementById('lock-status').innerText = "🚫 TEAM DISQUALIFIED FROM COMPETITION";
+                        document.getElementById('final-result').innerHTML = `<div style="color:var(--danger)">Your team has been disqualified in a previous round and cannot proceed.</div>`;
+                        document.getElementById('final-result').classList.remove('hidden');
+                        return;
+                    }
+
+                    const roomId = document.getElementById('log-room-id').value || sessionStorage.getItem('nexquiz_room_id');
+                    const roomPass = document.getElementById('log-room-pass').value || sessionStorage.getItem('nexquiz_room_pass');
+
+                    const { data: sessionData, error } = await sb.rpc('join_event', {
+                        p_room_id: roomId,
+                        p_password: roomPass
+                    });
+
+                    if (error) {
+                        if (error.message.includes("SUBMITTED") || error.message.includes("DISQUALIFIED")) {
+                            UI.switchView('view-lock');
+                            document.getElementById('lock-status').innerText = error.message;
+                        } else {
+                            UI.toast(error.message, "danger");
+                            UI.switchView('view-login');
+                        }
+                    } else {
+                        System.state.session_id = sessionData.session_id;
+                        sessionStorage.setItem('nexquiz_session_id', sessionData.session_id);
+                        UI.switchView('view-exam');
+                        Candidate.init(sessionData);
+                        Candidate.log("LOGIN", "Team entered the round");
+                    }
+                }
+            },
+
+            registerTestAdmin: async () => {
+                const email = document.getElementById('log-email').value;
+                const password = document.getElementById('log-password').value;
+
+                if (!email || !password) return UI.toast("Enter Email & Password to Register", "warning");
+
+                const btn = document.getElementById('btn-register');
+                btn.innerHTML = "Creating..."; btn.disabled = true;
+
+                const { data, error } = await sb.auth.signUp({
+                    email, password,
+                    options: { data: { full_name: "Admin User", role: "admin" } }
+                });
+
+                if (error) {
+                    // Check for rate limit specifically
+                    if (error.message.includes("rate limit") || error.status === 429) {
+                        UI.toast("Too many attempts. Wait a minute or check email.", "danger");
+                    } else if (error.message.includes("already registered") || error.message.includes("unique constraint")) {
+                        UI.toast("Admin already registered. Try logging in.", "info");
+                        const { error: lErr } = await sb.auth.signInWithPassword({ email, password });
+                        if (!lErr) location.reload();
+                    } else {
+                        UI.toast(error.message, "danger");
+                    }
+                    btn.innerHTML = "Register as Admin"; btn.disabled = false;
+                } else {
+                    UI.toast("Created! Logging in...", "success");
+                    const { error: lErr } = await sb.auth.signInWithPassword({ email, password });
+                    if (!lErr) location.reload();
+                }
+            },
+
+            logout: async () => {
+                if (System.state.session_id) {
+                    await Candidate.log("LOGOUT", "Team exited the portal");
+                }
+                await sb.auth.signOut();
+                sb.removeAllChannels(); // FREE TIER: Connection cleanup
+                sessionStorage.clear();
+                window.location.reload();
+            }
+        };
+
+        const Admin = {
+            eventId: null,
+            _monitorSub: null,
+            _lbTimer: null,
+            sessionIds: [],
+
+            init: () => {
+                Admin.sync();
+                Admin.loadEventsForSelector(); // Load dropdowns
+                Admin.startRealtime();
+            },
+
+            loadEventsForSelector: async () => {
+                // Populate both Question Designer and Manager dropdowns
+                const { data } = await sb.from('events').select('id, title, status').neq('status', 'ARCHIVED').order('created_at', { ascending: false });
+                const optionsHtml = '<option value="">Select Event...</option>' +
+                    (data || []).map(e => `<option value="${e.id}">[${e.status}] ${e.title}</option>`).join('');
+
+                const qSel = document.getElementById('q-target-event');
+                if (qSel) qSel.innerHTML = optionsHtml;
+
+                const mSel = document.getElementById('mgr-event-select');
+                if (mSel) mSel.innerHTML = optionsHtml;
+            },
+
+            sync: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                console.log("[Admin] Synchronizing for Event ID:", eventId);
+
+                if (eventId) {
+                    Admin.loadEventDetails();
+
+                    // 📊 1. FETCH ROOM-SPECIFIC STATS
+                    const { data: sessData, error: sErr } = await sb.from('sessions').select('id, status').eq('event_id', eventId);
+
+                    if (!sErr && sessData) {
+                        const totalCount = sessData.length;
+                        const onlineCount = sessData.filter(s => s.status === 'ACTIVE').length;
+
+                        document.getElementById('st-total').innerText = totalCount;
+                        document.getElementById('st-online').innerText = onlineCount;
+
+                        // Use the event status for the 'Active Events' box when a room is focused
+                        const { data: eData } = await sb.from('events').select('status').eq('id', eventId).single();
+                        document.getElementById('st-events').innerText = eData?.status || 'UNKNOWN';
+                        document.querySelector('#st-events').parentElement.querySelector('.stat-label').innerText = "ROOM STATUS";
+                    }
+                } else {
+                    // Global Stats Fallback
+                    const { data, error } = await sb.rpc('get_admin_stats');
+                    if (!error && data) {
+                        document.getElementById('st-total').innerText = data.total_players;
+                        document.getElementById('st-online').innerText = data.online_players;
+                        document.getElementById('st-events').innerText = data.active_events;
+                        document.querySelector('#st-events').parentElement.querySelector('.stat-label').innerText = "ACTIVE EVENTS";
+                    }
+                }
+                Admin.syncLogs();
+                Admin.refreshLeaderboard();
+            },
+
+            createEvent: async () => {
+                const roomId = document.getElementById('f-room-id').value;
+                const roomPass = document.getElementById('f-room-pass').value;
+                const title = document.getElementById('f-round-name').value;
+                const timeStr = document.getElementById('f-time').value;
+                const marksStr = document.getElementById('f-marks').value;
+                const negStr = document.getElementById('f-neg').value;
+
+                if (!roomId || !title) return UI.toast("Room ID and Title required", "warning");
+
+                // V2: Insert into 'events' table with JSONB config
+                const config = {
+                    duration: timeStr ? parseInt(timeStr) : 45,
+                    marks: marksStr ? parseInt(marksStr) : 4,
+                    negative_marks: negStr ? parseInt(negStr) : 1,
+                    show_leaderboard: true,
+                    ip_lock: true
+                };
+
+                const insertData = {
+                    room_id: roomId,
+                    password: roomPass || '1234', // Default pass if empty
+                    title: title,
+                    status: 'ACTIVE',
+                    config: config,
+                    start_time: new Date().toISOString()
+                };
+
+                const { data, error } = await sb.from('events').insert(insertData).select().single();
+
+                if (error) {
+                    console.error("Event Create Error:", error); // Log full error
+                    UI.toast("Failed: " + (error.details || error.message), "danger");
+                } else {
+                    Admin.eventId = data.id;
+                    UI.toast(`Event '${title}' Deployed! (ID: ${data.id})`);
+                    Admin.loadEventsForSelector(); // Refresh dropdowns
+                    // Select this event in dropdown
+                    document.getElementById('q-target-event').value = data.id;
+                }
+            },
+
+            addQuestion: async () => {
+                const isEdit = Admin.editingQuestionId != null;
+                const targetEventId = document.getElementById('q-target-event').value || Admin.eventId;
+
+                if (!isEdit && !targetEventId) return UI.toast("Please select a Target Event!", "warning");
+
+                const text = document.getElementById('q-text').value;
+                const correctIdx = document.getElementById('q-correct').value;
+                const opts = Array.from(document.querySelectorAll('.q-opt')).map(i => i.value);
+
+                if (!text || !correctIdx) return UI.toast("Incomplete Question", "danger");
+
+                let qData, qErr;
+
+                if (isEdit) {
+                    // UPDATE Existing
+                    const { data, error } = await sb.from('questions').update({
+                        content: text,
+                        image_url: document.getElementById('q-img-url').value,
+                        hint: document.getElementById('q-hint').value
+                    }).eq('id', Admin.editingQuestionId).select().single();
+                    qData = data; qErr = error;
+                } else {
+                    // INSERT New
+                    const { data, error } = await sb.from('questions').insert({
+                        event_id: targetEventId,
+                        content: text,
+                        image_url: document.getElementById('q-img-url').value,
+                        hint: document.getElementById('q-hint').value,
+                        marks: 4, negative_marks: 1, time_limit_seconds: 45
+                    }).select().single();
+                    qData = data; qErr = error;
+                }
+
+                if (qErr) return UI.toast("Save Failed: " + qErr.message, "danger");
+
+                // OPTIONS STRATEGY: Delete all & Re-insert (Easiest way to handle changes)
+                if (isEdit) {
+                    const { error: delErr } = await sb.from('options').delete().eq('question_id', qData.id);
+                    if (delErr) {
+                        UI.toast("Updated Text, but cannot change options (FK violation?)", "warning");
+                        Admin.cancelEdit();
+                        return;
+                    }
+                }
+
+                const optRows = opts.map((content, idx) => ({
+                    question_id: qData.id,
+                    content: content,
+                    is_correct: (String(idx) === String(correctIdx))
+                }));
+
+                const { error: oErr } = await sb.from('options').insert(optRows);
+
+                if (oErr) {
+                    UI.toast("Option Save Failed: " + oErr.message, "danger");
+                } else {
+                    UI.toast(isEdit ? "Question Updated!" : "Question Added to Bank");
+                    if (isEdit) Admin.cancelEdit();
+                    else document.getElementById('q-text').value = '';
+                }
+            },
+
+            uploadImage: async (input) => {
+                if (!input.files || input.files.length === 0) return;
+                const file = input.files[0];
+                const btn = input.nextElementSibling;
+                const originalText = btn.innerText;
+
+                try {
+                    btn.innerText = "⏳ Uploading...";
+                    btn.disabled = true;
+
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+                    const filePath = `questions/${fileName}`;
+
+                    // UPLOAD to 'question-images' bucket
+                    const { data, error } = await sb.storage
+                        .from('question-images')
+                        .upload(filePath, file);
+
+                    if (error) throw error;
+
+                    // Get Public URL
+                    const { data: { publicUrl } } = sb.storage
+                        .from('question-images')
+                        .getPublicUrl(filePath);
+
+                    document.getElementById('q-img-url').value = publicUrl;
+                    UI.toast("Image Uploaded Successfully!");
+
+                } catch (err) {
+                    console.error("Upload Error:", err);
+                    UI.toast("Upload Failed: " + err.message, "danger");
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    input.value = ""; // Clear for next selection
+                }
+            },
+
+            editQuestion: async (qId) => {
+                const { data: q } = await sb.from('questions').select('*, options(*)').eq('id', qId).single();
+                if (!q) return;
+
+                Admin.editingQuestionId = qId;
+
+                document.getElementById('q-text').value = q.content;
+                document.getElementById('q-img-url').value = q.image_url || '';
+                document.getElementById('q-hint').value = q.hint || '';
+
+                // Set Event Selector (Wait for load if needed, but it should be loaded)
+                const evSel = document.getElementById('q-target-event');
+                if (evSel) evSel.value = q.event_id;
+
+                const sortedOpts = (q.options || []).sort((a, b) => a.created_at.localeCompare(b.created_at));
+                const optInputs = document.querySelectorAll('.q-opt');
+                let foundCorrect = null;
+
+                sortedOpts.forEach((o, i) => {
+                    if (i < 4) optInputs[i].value = o.content;
+                    if (o.is_correct) foundCorrect = i;
+                });
+
+                if (foundCorrect !== null) document.getElementById('q-correct').value = foundCorrect;
+
+                const btnSave = document.getElementById('btn-save-q');
+                if (btnSave) btnSave.innerText = "💾 Update Question";
+                const btnCancel = document.getElementById('btn-cancel-q');
+                if (btnCancel) btnCancel.classList.remove('hidden');
+
+                UI.showTab('factory');
+                UI.toast("Editing Question...");
+            },
+
+            cancelEdit: () => {
+                Admin.editingQuestionId = null;
+                const btnSave = document.getElementById('btn-save-q');
+                if (btnSave) btnSave.innerText = "+ Add to Bank";
+                const btnCancel = document.getElementById('btn-cancel-q');
+                if (btnCancel) btnCancel.classList.add('hidden');
+
+                document.getElementById('q-text').value = '';
+                document.getElementById('q-img-url').value = '';
+                document.getElementById('q-hint').value = '';
+                document.getElementById('q-correct').value = '';
+                Array.from(document.querySelectorAll('.q-opt')).forEach(i => i.value = '');
+                UI.showTab('manager');
+            },
+
+            refreshMonitor: async () => {
+                // Deprecated in favor of startRealtime and syncLogs
+                Admin.syncLogs();
+            },
+
+            syncLogs: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                console.log("[Monitor] Syncing Logs for Event:", eventId);
+                if (!eventId) {
+                    document.getElementById('monitor-body').innerHTML = '<tr><td colspan="4" style="text-align:center; opacity:0.5;">Please select a Round in Round Manager first</td></tr>';
+                    return;
+                }
+
+                // 🔄 [RESET UI IMMEDIATELY]
+                document.getElementById('monitor-body').innerHTML = '<tr><td colspan="4" style="text-align:center; opacity:0.5;">🔄 Refreshing for Round...</td></tr>';
+                Admin.sessionIds = [];
+
+                // 1. Get session info for this event to map names
+                console.log("[Monitor] Fetching sessions for Event ID:", eventId);
+                const { data: sData, error: sErr } = await sb.from('sessions').select('*').eq('event_id', eventId);
+
+                if (sErr) {
+                    console.error("[Monitor] Sessions fetch error:", sErr);
+                    UI.toast("DB Error (Sessions): " + sErr.message, "danger");
+                }
+                console.log("[Monitor] Sessions found count:", sData?.length);
+                if (sData) console.table(sData.map(s => ({ id: s.id, team: s.team_id, name: s.player_name, email: s.user_email })));
+
+                const sessionMap = {};
+                (sData || []).forEach(s => {
+                    sessionMap[s.id] = UI.resolveName(s);
+                });
+                console.log("[Monitor] Name mapping sample:", Object.values(sessionMap).slice(0, 5));
+                const sIds = Object.keys(sessionMap);
+
+                if (sIds.length === 0) {
+                    console.warn("[Monitor] No sessions found for event:", eventId);
+                    document.getElementById('monitor-body').innerHTML = '<tr><td colspan="4" style="text-align:center;">No teams have joined this round yet</td></tr>';
+                    Admin.sessionIds = [];
+                    return;
+                }
+                console.log("[Monitor] tracking sessions:", sIds);
+                Admin.sessionIds = sIds;
+
+                // 2. Fetch logs for these sessions
+                const { data, error: lErr } = await sb.from('system_logs')
+                    .select('*')
+                    .in('session_id', sIds)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (lErr) console.error("[Monitor] Logs fetch error:", lErr);
+
+                if (data) {
+                    console.log("[Monitor] Found logs count:", data.length);
+                    if (data.length === 0) {
+                        document.getElementById('monitor-body').innerHTML = '<tr><td colspan="4" style="text-align:center; opacity:0.7;">Sessions active, but no logs recorded yet.</td></tr>';
+                    } else {
+                        document.getElementById('monitor-body').innerHTML = data.map(l => {
+                            let nameDisplay = sessionMap[l.session_id];
+                            if (!nameDisplay || nameDisplay === "CANDIDATE") {
+                                // Fallback to log email or session-based email
+                                nameDisplay = (l.user_email ? l.user_email.split('@')[0].toUpperCase() : 'CANDIDATE');
+                            }
+
+                            const detailsStr = typeof l.details === 'object' ? JSON.stringify(l.details) : l.details;
+                            return `
+                            <tr>
+                                <td>${nameDisplay}</td>
+                                <td><strong>${l.event_type || 'INFO'}</strong><br><small>${detailsStr}</small></td>
+                                <td>${new Date(l.created_at).toLocaleTimeString()}</td>
+                                <td>
+                                    <button class="btn-danger" style="padding:4px; font-size:0.7rem; width:50px;" onclick="Admin.kick('${l.session_id}')">Kick</button>
+                                    <button class="btn-warning" style="padding:4px; font-size:0.7rem; width:50px; margin:2px 0;" onclick="Admin.lock('${l.session_id}')">Lock</button>
+                                    <button class="btn-success" style="padding:4px; font-size:0.7rem; width:50px;" onclick="Admin.unlock('${l.session_id}')">Unlock</button>
+                                </td>
+                            </tr>`;
+                        }).join('');
+                    }
+                }
+            },
+
+            unlock: async (sId) => {
+                if (!sId || sId === 'undefined') return UI.toast("No Session ID", "warning");
+                const { error } = await sb.rpc('admin_unlock_session', { p_session_id: sId });
+                if (error) UI.toast(error.message, "danger");
+                else {
+                    UI.toast("Session Unlocked & Violations Reset", "success");
+                    Admin.syncLogs();
+                }
+            },
+
+            lock: async (sId) => {
+                if (!sId || sId === 'undefined') return UI.toast("No Session ID", "warning");
+                if (!confirm("Lock this session? Candidate will see a LOCK screen but answers won't be deleted.")) return;
+                const { error } = await sb.from('sessions').update({ status: 'LOCKED' }).eq('id', sId);
+                if (error) UI.toast(error.message, "danger");
+                else {
+                    UI.toast("Session Locked", "warning");
+                    Admin.syncLogs();
+                }
+            },
+
+            refreshLeaderboard: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                if (!eventId) return;
+
+                // 1. Fetch Scores and Sessions in parallel (Safe manual join)
+                const [scoreRes, sessRes] = await Promise.all([
+                    sb.from('event_scores').select('*').eq('event_id', eventId).order('current_score', { ascending: false }),
+                    sb.from('sessions').select('*').eq('event_id', eventId)
+                ]);
+
+                if (scoreRes.error) console.error("[Leaderboard] Score fetch error:", scoreRes.error);
+                if (sessRes.error) console.error("[Leaderboard] Session fetch error:", sessRes.error);
+
+                const scores = scoreRes.data || [];
+                const sessions = sessRes.data || [];
+                console.log("[Admin LB] Sessions Count:", sessions.length);
+                if (sessions.length > 0) console.table(sessions.map(s => ({ uid: s.user_id, team: s.team_id, name: s.player_name })));
+
+                const sessMap = {};
+                sessions.forEach(s => sessMap[s.user_id] = s);
+
+                if (scores) {
+                    let rank = 1;
+                    document.getElementById('leaderboard-body').innerHTML = scores.map((d, i) => {
+                        const sess = sessMap[d.user_id];
+                        const cleanName = UI.resolveName(sess || d);
+                        const isDQ = (sess?.status || d.status) === 'DISQUALIFIED';
+
+                        // 🏆 Rank Logic: Show same rank for ties
+                        if (i > 0 && d.current_score < scores[i - 1].current_score) rank = i + 1;
+
+                        return `
+                        <tr style="${isDQ ? 'opacity:0.6; background:#fff1f2;' : ''}">
+                            <td>#${isDQ ? '—' : rank}</td>
+                            <td>${cleanName} ${isDQ ? '(DQ)' : ''}</td>
+                            <td><strong>${isDQ ? 'DQ' : d.current_score}</strong></td>
+                        </tr>`;
+                    }).join('');
+                }
+            },
+
+            startLeaderboardPoll: () => {
+                if (Admin._lbTimer) clearInterval(Admin._lbTimer);
+                Admin.refreshLeaderboard();
+                Admin._lbTimer = setInterval(() => Admin.refreshLeaderboard(), 16000);
+            },
+
+            startRealtime: () => {
+                // FREE TIER: Single channel for all Admin needs
+                if (Admin._monitorSub) return;
+
+                Admin._monitorSub = sb.channel('admin_main')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_logs' }, payload => {
+                        console.log("[Monitor] Log Inserted:", payload.new);
+                        if (Admin.sessionIds.includes(payload.new.session_id)) {
+                            UI.toast(`Alert: ${payload.new.details}`, 'danger');
+                            Admin.syncLogs();
+                        } else {
+                            console.log("[Monitor] Log ignored (not for this round/sessions)");
+                        }
+                    })
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sessions' }, payload => {
+                        console.log("[Monitor] Session Inserted:", payload.new);
+                        const currentEventId = document.getElementById('mgr-event-select').value;
+                        if (payload.new.event_id === currentEventId) {
+                            UI.toast(`New Entry: ${UI.resolveName(payload.new)}`, 'success');
+                            Admin.syncLogs();
+                        }
+                    })
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, payload => {
+                        const currentEventId = document.getElementById('mgr-event-select').value;
+                        if (payload.new.event_id === currentEventId) {
+                            if (payload.old.status !== 'SUBMITTED' && payload.new.status === 'SUBMITTED') {
+                                UI.toast(`Finished: ${payload.new.team_id || payload.new.player_name.split('@')[0]}`, 'success');
+                            } else if (payload.old.status !== 'DISQUALIFIED' && payload.new.status === 'DISQUALIFIED') {
+                                UI.toast(`DQ: ${payload.new.team_id || payload.new.player_name.split('@')[0]}`, 'danger');
+                            }
+                            Admin.syncLogs();
+                            Admin.refreshLeaderboard();
+                        }
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard_cache' }, () => {
+                        Admin.refreshLeaderboard();
+                    })
+                    .subscribe((status, error) => {
+                        if (error) console.error("Realtime Error:", error);
+                        console.log("Monitor Realtime Status:", status);
+                        if (status === 'SUBSCRIBED') UI.toast("Monitor Live", "success");
+                    });
+            },
+
+
+            kick: async (sessionId) => {
+                if (!confirm("Disqualify this player?")) return;
+                const { error } = await sb.from('sessions').update({ status: 'DISQUALIFIED' }).eq('id', sessionId);
+                if (error) UI.toast(error.message, 'danger');
+                else {
+                    UI.toast("Player Disqualified", "success");
+                    Admin.refreshLeaderboard();
+                }
+            },
+
+            clearRoundData: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                console.log("[Admin] Initiating Sweep for Event:", eventId);
+                if (!eventId) return UI.toast("Select an event first in the Command Focus", "warning");
+
+                if (!confirm("⚠️ FINAL WARNING: This will permanently delete ALL security logs for this round. This action CANNOT be undone. Continue?")) return;
+
+                UI.toast("🧹 Sweeping Logs...", "info");
+
+                // 1. Fetch session IDs for this event
+                const { data: sData, error: sErr } = await sb.from('sessions').select('id').eq('event_id', eventId);
+                if (sErr) {
+                    console.error("[Admin] Session fetch error:", sErr);
+                    return UI.toast("Sweep Failed: Could not fetch sessions", "danger");
+                }
+
+                const sIds = (sData || []).map(s => s.id);
+                console.log("[Admin] Targeting Sessions:", sIds);
+
+                if (sIds.length === 0) return UI.toast("No sessions found for this round. Nothing to clear.", "info");
+
+                // 2. Delete logs belonging to these sessions (with exact count)
+                console.log("[Admin] Executing deletion on system_logs for sessions:", sIds);
+                const { count, error: dErr, status: dStatus } = await sb.from('system_logs')
+                    .delete({ count: 'exact' })
+                    .in('session_id', sIds);
+
+                console.log("[Admin] system_logs Delete result:", { status: dStatus, count, error: dErr });
+
+                // 3. Clear leaderboard cache
+                const { error: cErr } = await sb.from('leaderboard_cache').delete().eq('event_id', eventId);
+                console.log("[Admin] leaderboard_cache Delete result:", { error: cErr });
+
+                if (dErr) {
+                    console.error("[Admin] Deletion Error:", dErr);
+                    UI.toast("Sweep Failed: " + dErr.message, "danger");
+                } else if (count === 0) {
+                    console.warn("[Admin] No logs were actually deleted. Check RLS or session mapping.");
+                    UI.toast("Database responded with 0 logs deleted. Check permissions.", "warning");
+                    // Still reload to be safe and clear any UI ghosting
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    console.log("[Admin] Sweep complete. Logs purged:", count);
+                    UI.toast(`Success! Purged ${count} logs. Reloading...`, "success");
+                    setTimeout(() => location.reload(), 1500);
+                }
+            },
+
+            // --- 🛠️ ROUND MANAGER (V2) ---
+            loadEventsForManager: async () => {
+                const { data } = await sb.from('events').select('id, title, status').neq('status', 'ARCHIVED').order('created_at', { ascending: false });
+                const sel = document.getElementById('mgr-event-select');
+                sel.innerHTML = '<option value="">Select an Active/Draft Event...</option>' +
+                    (data || []).map(e => `<option value="${e.id}">[${e.status}] ${e.title}</option>`).join('');
+                UI.toast("Events Refreshed");
+            },
+
+            loadEventDetails: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                const editor = document.getElementById('mgr-editor');
+                if (!eventId) { editor.classList.add('hidden'); return; }
+
+                // 1. Fetch Event Config
+                const { data: eData } = await sb.from('events').select('*').eq('id', eventId).single();
+                if (eData) {
+                    const cfg = eData.config || {};
+                    document.getElementById('e-edit-marks').value = cfg.marks || 4;
+                    document.getElementById('e-edit-neg').value = cfg.negative_marks || 1;
+                    document.getElementById('e-edit-time').value = cfg.duration || 45;
+
+                    // Security Config
+                    document.getElementById('e-edit-max-v').value = cfg.max_violations || 3;
+                    document.getElementById('e-chk-tab').checked = (cfg.check_tab !== false);
+                    document.getElementById('e-chk-resize').checked = (cfg.check_resize !== false);
+                    document.getElementById('e-chk-dev').checked = (cfg.check_dev !== false);
+                    document.getElementById('e-chk-ip').checked = (cfg.ip_lock === true);
+                    document.getElementById('e-chk-kb').checked = (cfg.check_keyboard === true);
+                    document.getElementById('e-chk-ss').checked = (cfg.check_screenshot === true);
+                    document.getElementById('e-chk-comp').checked = (cfg.is_competition === true);
+                    document.getElementById('e-chk-hide-lb').checked = (cfg.hide_leaderboard === true);
+                    document.getElementById('e-chk-freeze-lb').checked = (cfg.freeze_leaderboard === true);
+                    document.getElementById('e-edit-qualifiers').value = cfg.qualifiers_count || '';
+
+                    // Population of Start Time (Local Timezone Fix)
+                    if (eData.start_time) {
+                        const date = new Date(eData.start_time);
+                        const offset = date.getTimezoneOffset() * 60000;
+                        const localISOTime = (new Date(date - offset)).toISOString().slice(0, 16);
+                        document.getElementById('e-edit-start').value = localISOTime;
+                    }
+
+                    const btn = document.getElementById('btn-pause-event');
+                    if (btn) {
+                        btn.innerHTML = (eData.status === 'PAUSED') ? '▶️ Resume Event' : '⏸️ Pause Event';
+                        btn.className = (eData.status === 'PAUSED') ? 'btn btn-success' : 'btn btn-warning';
+                    }
+                }
+
+                // 2. Fetch Questions
+                const { data: qData } = await sb.from('questions').select('id, content').eq('event_id', eventId).order('created_at');
+                const list = document.getElementById('mgr-q-list');
+                list.innerHTML = (qData || []).map((q, i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding:5px;">
+                        <span style="font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;"><strong>Q${i + 1}:</strong> ${q.content}</span>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-primary" style="padding:2px 6px; font-size:0.7rem;" onclick="Admin.editQuestion('${q.id}')">Edit</button>
+                            <button class="btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="Admin.deleteQuestion('${q.id}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                editor.classList.remove('hidden');
+            },
+
+            saveEventConfig: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                if (!eventId) return;
+
+                const newConfig = {
+                    marks: parseInt(document.getElementById('e-edit-marks').value) || 4,
+                    negative_marks: parseInt(document.getElementById('e-edit-neg').value) || 1,
+                    duration: parseInt(document.getElementById('e-edit-time').value) || 45,
+                    max_violations: parseInt(document.getElementById('e-edit-max-v').value) || 3,
+                    check_tab: document.getElementById('e-chk-tab').checked,
+                    check_resize: document.getElementById('e-chk-resize').checked,
+                    check_dev: document.getElementById('e-chk-dev').checked,
+                    ip_lock: document.getElementById('e-chk-ip').checked,
+                    check_keyboard: document.getElementById('e-chk-kb').checked,
+                    check_screenshot: document.getElementById('e-chk-ss').checked,
+                    is_competition: document.getElementById('e-chk-comp').checked,
+                    hide_leaderboard: document.getElementById('e-chk-hide-lb').checked,
+                    freeze_leaderboard: document.getElementById('e-chk-freeze-lb').checked,
+                    qualifiers_count: parseInt(document.getElementById('e-edit-qualifiers').value) || 0,
+                    show_leaderboard: true
+                };
+
+                const { error } = await sb.from('events').update({
+                    config: newConfig,
+                    start_time: (document.getElementById('e-edit-start').value) ?
+                        new Date(document.getElementById('e-edit-start').value).toISOString() :
+                        new Date().toISOString()
+                }).eq('id', eventId);
+
+                if (error) UI.toast(error.message, 'danger');
+                else UI.toast("Configuration Updated!", "success");
+            },
+
+            toggleEventStatus: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                if (!eventId) return;
+
+                // Get current status
+                const { data } = await sb.from('events').select('status').eq('id', eventId).single();
+                if (!data) return;
+
+                const newStatus = (data.status === 'ACTIVE') ? 'PAUSED' : 'ACTIVE';
+
+                const { error } = await sb.from('events').update({ status: newStatus }).eq('id', eventId);
+
+                if (error) UI.toast(error.message, 'danger');
+                else {
+                    UI.toast(`Event is now ${newStatus}`, "success");
+                    Admin.loadEventDetails(); // Refresh UI button
+                }
+            },
+
+            deleteEvent: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                if (!eventId) return;
+
+                if (!confirm("⚠️ CRITICAL WARNING ⚠️\n\nAre you sure you want to DELETE this event?\n\nThis will remove:\n- The Event itself\n- All Questions\n- All Candidate Sessions & Scores\n\nThis action cannot be undone.")) return;
+
+                const { error } = await sb.from('events').delete().eq('id', eventId);
+
+                if (error) {
+                    console.error("Delete Error:", error);
+                    UI.toast("Delete Failed: " + error.message + " (Check Foreign Key Constraints)", "danger");
+                } else {
+                    UI.toast("Event Deleted Successfully", "success");
+                    document.getElementById('mgr-editor').classList.add('hidden');
+                    Admin.loadEventsForSelector(); // Refresh dropdown
+                }
+            },
+
+            deleteQuestion: async (qId) => {
+                if (!confirm("Personally remove this question? Cannot be undone.")) return;
+                const { error } = await sb.from('questions').delete().eq('id', qId);
+                if (error) UI.toast(error.message, 'danger');
+                else {
+                    UI.toast("Question Deleted");
+                    Admin.loadEventDetails(); // Refresh list
+                }
+            },
+
+            publishResults: async () => {
+                const eventId = document.getElementById('mgr-event-select').value;
+                if (!eventId) return;
+
+                if (!confirm("Publish results to all candidates? This will reveal scores for this competition.")) return;
+
+                const { data: eData } = await sb.from('events').select('config').eq('id', eventId).single();
+                const config = eData.config || {};
+                config.results_published = true;
+
+                const { error } = await sb.from('events').update({ config: config }).eq('id', eventId);
+                if (error) UI.toast(error.message, 'danger');
+                else UI.toast("Results Published!", "success");
+            }
+        };
+
+        const Candidate = {
+            data: null,
+            answers: {},
+            idx: 0,
+            violations: 0,
+            isLoading: false,
+            _pollTimer: null,
+
+            log: async (type, details) => {
+                if (!System.state.session_id) {
+                    console.warn("System Log Postponed: No active session_id");
+                    return;
+                }
+                const { error } = await sb.from('system_logs').insert({
+                    session_id: System.state.session_id,
+                    event_type: type,
+                    details: details,
+                    created_at: new Date().toISOString()
+                });
+                if (error) console.error("System Log Error:", error, { type, details });
+                else console.log("System Log OK:", type, details);
+            },
+
+            init: async (sessionData) => {
+                // 🔍 Robust Identity Fetch: Ensure we have the full session record for naming
+                if (sessionData && !sessionData.team_id && !sessionData.player_name) {
+                    const sid = sessionData.session_id || sessionData.id;
+                    if (sid) {
+                        const { data: fullS } = await sb.from('sessions').select('*').eq('id', sid).single();
+                        if (fullS) sessionData = { ...sessionData, ...fullS };
+                    }
+                }
+                Candidate.data = sessionData;
+                Candidate.idx = 0;
+                Candidate.violations = sessionData.current_violations || 0;
+
+                const maxV = (sessionData.config && sessionData.config.max_violations) ? sessionData.config.max_violations : 3;
+                const vEl = document.getElementById('ex-violations');
+                if (vEl) vEl.innerText = `Warnings: ${Candidate.violations}/${maxV}`;
+
+                Candidate.answers = {};
+                (sessionData.answers || []).forEach(a => {
+                    Candidate.answers[a.question_id] = a.selected_option_id;
+                });
+
+                console.log("[Candidate] Init Data:", sessionData);
+
+                // 💡 REFRESH NAME: Final attempt to show the real name
+                const nameDisplay = UI.resolveName(sessionData);
+                document.getElementById('ex-user').innerText = nameDisplay;
+                document.getElementById('ex-room').innerText = sessionData.event_title;
+
+                if (sessionData.status === 'SUBMITTED' || sessionData.status === 'DISQUALIFIED') {
+                    Candidate.finish(true,
+                        sessionData.status === 'DISQUALIFIED' ? "DISQUALIFIED" : "ALREADY SUBMITTED");
+                    return;
+                }
+
+                const cfg = sessionData.config || {};
+
+                // 🚦 SYNC FIX: Fetch start_time if RPC omitted it (Ensures competition starts on time)
+                if (cfg.is_competition && !sessionData.start_time) {
+                    const { data: eData } = await sb.from('events').select('start_time').eq('id', sessionData.event_id).single();
+                    if (eData) sessionData.start_time = eData.start_time;
+                }
+
+                const now = Date.now();
+                const startTime = new Date(sessionData.start_time).getTime(); // Event Start
+                const joinedAt = new Date(sessionData.created_at).getTime();  // User Join
+                const duration = cfg.duration || 45;
+                const baseTime = cfg.is_competition ? startTime : joinedAt;
+
+                // 🚦 COMPETITION MODE: Check if it's too early
+                if (cfg.is_competition && !isNaN(startTime) && now < startTime) {
+                    Candidate.startWaitingRoom(startTime);
+                    return;
+                }
+
+                if (cfg.is_competition && isNaN(startTime)) {
+                    console.error("Invalid Start Time for Competition");
+                    UI.toast("Configuration Error: Missing Start Time", "danger");
+                    return;
+                }
+
+                let elapsedSec = Math.floor((now - baseTime) / 1000);
+                if (elapsedSec < -30) {
+                    if (cfg.is_competition) {
+                        Candidate.startWaitingRoom(startTime);
+                        return;
+                    }
+                    elapsedSec = 0;
+                }
+
+                const remainingSec = Math.max(0, (duration * 60) - elapsedSec);
+
+                if (!sessionData.is_ended && remainingSec > 0) {
+                    Candidate.timer(remainingSec);
+                    Candidate.render();
+                    Candidate.startSecurity();
+                } else {
+                    Candidate.finish(true, remainingSec <= 0 ? "TIME UP" : "EXAM ENDED");
+                }
+            },
+
+            startWaitingRoom: (startTime) => {
+                UI.switchView('view-exam');
+                const box = document.getElementById('exam-q-box');
+                box.innerHTML = `
+                    <div style="text-align:center; padding:3rem 1rem;">
+                        <h1 style="font-size:3rem; color:var(--accent); font-weight:900;" id="wait-timer">--:--</h1>
+                        <h3 style="margin:1rem 0;">🏆 Competition Waiting Room</h3>
+                        <p style="color:#64748b;">The exam will start automatically at the same time for everyone.</p>
+                        <div class="card" style="background:#f0f9ff; margin-top:2rem; text-align:left;">
+                            <small><strong>Status:</strong> Authenticated ✅</small><br>
+                            <small><strong>Network:</strong> Connected ⚡</small><br>
+                            <small><strong>Security:</strong> Monitoring Active 🛡️</small>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('exam-nav-btns').classList.add('hidden');
+
+                const poll = setInterval(async () => {
+                    const now = Date.now();
+                    const diff = Math.floor((startTime - now) / 1000);
+
+                    if (diff <= 0) {
+                        clearInterval(poll);
+                        const { data: eData } = await sb.from('events').select('start_time, config').eq('id', Candidate.data.event_id).single();
+                        const now = Date.now();
+                        const startTime = new Date(eData.start_time).getTime();
+                        const duration = (eData.config?.duration || 45) * 60;
+
+                        if (now > startTime + (duration * 1000)) {
+                            Candidate.finish(true, "EXAM ENDED");
+                        } else {
+                            // REFRESH SESSION DATA: Ensure we have latest config/questions
+                            const { data: freshSession, error } = await sb.rpc('join_event', {
+                                p_room_id: sessionStorage.getItem('nexquiz_room_id'),
+                                p_password: sessionStorage.getItem('nexquiz_room_pass')
+                            });
+                            if (!error && freshSession) {
+                                Candidate.init(freshSession);
+                            } else {
+                                Candidate.init(Candidate.data); // Fallback
+                            }
+                        }
+                    } else {
+                        const m = Math.floor(diff / 60), s = diff % 60;
+                        document.getElementById('wait-timer').innerText = `${m}:${s < 10 ? '0' + s : s}`;
+                    }
+                }, 1000);
+            },
+
+            render: () => {
+                const qs = Candidate.data.questions || [];
+                if (qs.length === 0) return UI.toast("No Questions in Exam", "warning");
+
+                // Reset box if it was a waiting room
+                const box = document.getElementById('exam-q-box');
+                if (box.querySelector('#wait-timer')) {
+                    box.innerHTML = `
+                        <div id="q-img-area"></div>
+                        <div id="q-img-zoom-hint" class="q-img-msg hidden">🔍 Click image to zoom & inspect</div>
+                        <h3 id="q-txt" style="margin-bottom:1.5rem;">Loading...</h3>
+                        <div id="opt-area"></div>
+                    `;
+                    document.getElementById('exam-nav-btns').classList.remove('hidden');
+                }
+
+                const q = qs[Candidate.idx];
+                const imgArea = document.getElementById('q-img-area');
+                const zoomHint = document.getElementById('q-img-zoom-hint');
+
+                imgArea.innerHTML = q.image_url ?
+                    `<img src="${q.image_url}" class="q-img" onclick="Candidate.openLightbox(this.src)" style="cursor:zoom-in">` : '';
+
+                if (q.image_url && zoomHint) zoomHint.classList.remove('hidden');
+                else if (zoomHint) zoomHint.classList.add('hidden');
+
+                document.getElementById('q-txt').innerText = `(${Candidate.idx + 1}/${qs.length}) ${q.content}`;
+
+                const area = document.getElementById('opt-area');
+                area.innerHTML = (q.options || []).map((o, i) => `
+                    <label class="option-label">
+                        <input type="radio" name="q-opt" value="${o.id}" 
+                            ${Candidate.answers[q.id] === o.id ? 'checked' : ''} 
+                            onchange="Candidate.saveAnswer('${q.id}', '${o.id}')">
+                        ${String.fromCharCode(65 + i)}. ${o.content}
+                    </label>
+                `).join('');
+
+                // Nav State
+                const nextBtn = document.getElementById('btn-next');
+                if (Candidate.idx === qs.length - 1) {
+                    nextBtn.innerText = "Finish 🏁";
+                    nextBtn.onclick = Candidate.submitSession;
+                    nextBtn.classList.replace('btn-primary', 'btn-success');
+                } else {
+                    nextBtn.innerText = "Next ➔";
+                    nextBtn.onclick = Candidate.next;
+                    nextBtn.classList.replace('btn-success', 'btn-primary');
+                }
+            },
+
+            saveAnswer: async (qId, optId) => {
+                if (Candidate.isLoading) return;
+                Candidate.answers[qId] = optId;
+
+                // Do not await/block UI for sync
+                sb.rpc('submit_response', {
+                    p_session_id: System.state.session_id,
+                    p_question_id: qId,
+                    p_selected_option_id: optId
+                }).then(({ error }) => {
+                    if (error) {
+                        console.error("Sync Error:", error);
+                        if (error.message.includes("Event is currently")) {
+                            UI.toast("PAUSED: You cannot submit answers right now.", "warning");
+                        }
+                    }
+                });
+            },
+
+            prev: () => {
+                Candidate.idx--;
+                Candidate.render();
+            },
+
+            next: () => {
+                Candidate.idx++;
+                Candidate.render();
+            },
+
+            submitSession: async (skipConfirm = false) => {
+                if (Candidate.isLoading) return;
+                if (!skipConfirm && !confirm("Are you sure you want to Submit? You cannot return.")) return;
+
+                Candidate.isLoading = true;
+                const { error } = await sb.rpc('submit_exam', { p_session_id: System.state.session_id });
+
+                if (error) {
+                    UI.toast("Submission Error: " + error.message, "danger");
+                    Candidate.isLoading = false;
+                } else {
+                    Candidate.finish(true, "Exam Submitted Successfully!");
+                }
+            },
+
+            toggleLeaderboard: async (forceShow = false) => {
+                const lbBox = document.getElementById('exam-leaderboard');
+                const qBox = document.getElementById('exam-q-box');
+                const navBtns = document.getElementById('exam-nav-btns');
+                const btnLb = document.getElementById('btn-ex-lb');
+
+                if (lbBox.classList.contains('hidden') || forceShow) {
+                    const cfg = Candidate.data.config || {};
+                    if (cfg.hide_leaderboard && !forceShow) return UI.toast("Leaderboard is HIDDEN", "warning");
+
+                    lbBox.classList.remove('hidden');
+                    qBox.classList.add('hidden');
+                    if (navBtns) navBtns.classList.add('hidden');
+                    btnLb.innerText = "✍️ Back to Questions";
+
+                    // Start Polling (O(1) from Cache)
+                    if (Candidate._pollTimer) clearInterval(Candidate._pollTimer);
+                    Candidate.renderLeaderboard();
+                    Candidate._pollTimer = setInterval(() => Candidate.renderLeaderboard(), 16000);
+                } else {
+                    if (Candidate._pollTimer) clearInterval(Candidate._pollTimer);
+                    lbBox.classList.add('hidden');
+                    qBox.classList.remove('hidden');
+                    if (navBtns) navBtns.classList.remove('hidden');
+                    btnLb.innerText = "🏆 View Leaderboard";
+                }
+            },
+
+            renderLeaderboard: async () => {
+                const eventId = Candidate.data.event_id;
+
+                // 1. Fetch Scores and Sessions in parallel (Safe manual join)
+                const [scoreRes, sessRes] = await Promise.all([
+                    sb.from('event_scores').select('*').eq('event_id', eventId).order('current_score', { ascending: false }),
+                    sb.from('sessions').select('*').eq('event_id', eventId)
+                ]);
+
+                if (scoreRes.error) console.error("[Candidate LB] Score error:", scoreRes.error);
+                if (sessRes.error) console.error("[Candidate LB] Session error:", sessRes.error);
+
+                const scores = scoreRes.data || [];
+                const sessions = sessRes.data || [];
+                const sessMap = {};
+                sessions.forEach(s => sessMap[s.user_id] = s);
+
+                if (error) return console.warn("Leaderboard fetch error:", error);
+
+                const cfg = Candidate.data.config || {};
+                const qualifiers = cfg.qualifiers_count || 0;
+
+                const statusEl = document.getElementById('ex-lb-status');
+                if (cfg.freeze_leaderboard) {
+                    statusEl.innerText = "❄️ Leaderboard is FROZEN";
+                    statusEl.style.color = "var(--warning)";
+                } else {
+                    statusEl.innerText = "⚡ Full Standings (Updates every 16s)";
+                    statusEl.style.color = "var(--success)";
+                }
+
+                // Split DQ and Regular
+                const regular = scores.filter(d => {
+                    const sess = sessMap[d.user_id];
+                    return (sess?.status || d.status) !== 'DISQUALIFIED';
+                });
+                const disqualified = scores.filter(d => {
+                    const sess = sessMap[d.user_id];
+                    return (sess?.status || d.status) === 'DISQUALIFIED';
+                });
+                const fullList = [...regular, ...disqualified];
+
+                document.getElementById('ex-lb-body').innerHTML = fullList.map((d, i) => {
+                    const sess = sessMap[d.user_id];
+                    const isMe = d.user_id === (System.state.user ? System.state.user.id : null);
+                    const isDQ = (sess?.status || d.status) === 'DISQUALIFIED';
+                    const isQualified = qualifiers > 0 && (i + 1) <= qualifiers && !isDQ;
+
+                    let rowStyle = "";
+                    if (isDQ) rowStyle = "background:#fee2e2; color:#991b1b; text-decoration:line-through; opacity:0.7;";
+                    else if (isMe) rowStyle = "background:#fef3c7; font-weight:bold; border:2px solid var(--warning);";
+                    else if (isQualified) rowStyle = "background:#f0fdf4;";
+
+                    const nameDisplay = isMe ? 'You (Me)' : UI.resolveName(sess || d);
+
+                    return `
+                        <tr style="${rowStyle}">
+                            <td>${isDQ ? '🚫' : '#' + (i + 1)} ${isQualified ? '✅' : ''}</td>
+                            <td>${nameDisplay}</td>
+                            <td>${isDQ ? 'DQ' : d.current_score}</td>
+                        </tr>`;
+                }).join('');
+
+                // SYNC to Lock View Leaderboard as well
+                const lockBody = document.getElementById('lock-lb-body');
+                if (lockBody) lockBody.innerHTML = document.getElementById('ex-lb-body').innerHTML;
+            },
+
+            showHint: () => {
+                const q = Candidate.data.questions[Candidate.idx];
+                if (q.hint) {
+                    document.getElementById('hint-box').innerText = q.hint;
+                    document.getElementById('hint-box').classList.remove('hidden');
+                } else {
+                    UI.toast("No hint available", "warning");
+                }
+            },
+
+            startSecurity: () => {
+                const cfg = Candidate.data.config || {};
+
+                // Debounce wrapper
+                const debounce = (fn, delay) => {
+                    let timeout;
+                    return (...args) => {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => fn(...args), delay);
+                    };
+                };
+
+                // 📸 Anti-Screenshot / Focus Loss (Mobile Optimized)
+                const overlay = document.getElementById('security-overlay');
+                const blackoutMessages = [
+                    "UNAUTHORIZED CAPTURE DETECTED",
+                    "SECURITY BLACKOUT IN EFFECT",
+                    "ENCRYPTED CONTENT MASKED",
+                    "VULNERABILITY PREVENTION ACTIVE"
+                ];
+
+                let blackoutTimeout;
+
+                const applyBlackout = () => {
+                    const cfg = Candidate.data.config || {};
+                    if (cfg.check_screenshot || cfg.check_tab !== false) {
+                        overlay.querySelector('h2').innerText = cfg.check_screenshot ?
+                            `[${blackoutMessages[Math.floor(Math.random() * blackoutMessages.length)]}]` :
+                            "[CONTENT HIDDEN - WINDOW LOST FOCUS]";
+                        overlay.style.display = 'flex';
+                        overlay.style.backdropFilter = 'blur(20px) contrast(0.5)';
+                        document.body.style.filter = 'blur(40px) grayscale(100%)';
+                        document.body.style.pointerEvents = 'none';
+
+                        // 🛡️ MOBILE GRACE PERIOD (For onblur specifically)
+                        clearTimeout(blackoutTimeout);
+                        blackoutTimeout = setTimeout(() => {
+                            if (overlay.style.display === 'flex') {
+                                Candidate.report(cfg.check_screenshot ? "Screenshot/App Switch Attempt" : "Focus Lost");
+                            }
+                        }, 2000);
+                    }
+                };
+
+                const removeBlackout = () => {
+                    clearTimeout(blackoutTimeout);
+                    overlay.style.display = 'none';
+                    document.body.style.filter = 'none';
+                    document.body.style.pointerEvents = 'auto';
+                };
+
+                window.onblur = applyBlackout;
+                window.onfocus = removeBlackout;
+
+                document.addEventListener('visibilitychange', () => {
+                    const cfg = Candidate.data.config || {};
+                    if (document.hidden) {
+                        applyBlackout();
+                        // ⚡ IMMEDIATE VIOLATION for explicit tab switch
+                        if (cfg.check_tab !== false) {
+                            Candidate.report("Tab Switch Violation");
+                            console.warn("Immediate violation reported for tab switch.");
+                        }
+                    } else {
+                        removeBlackout();
+                    }
+                });
+
+                document.addEventListener('contextmenu', e => e.preventDefault());
+
+                // ⌨️ Keyboard / Resize Detection (Mobile Optimized)
+                if (cfg.check_keyboard || cfg.check_resize !== false) {
+                    let initialHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+                    const handleResize = debounce(() => {
+                        const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+                        // Check for keyboard reveal (Height drop > 25%)
+                        if (currentHeight < initialHeight * 0.75) {
+                            if (cfg.check_keyboard) {
+                                Candidate.report("Keyboard Violation");
+                                UI.toast("KEYBOARD PROHIBITED", "danger");
+                            } else if (cfg.check_resize !== false) {
+                                Candidate.report("Screen Resize");
+                            }
+                        } else if (currentHeight > initialHeight * 0.9) {
+                            // If user resizes larger, update initial to handle rotations etc.
+                            initialHeight = currentHeight;
+                        }
+                    }, 400);
+
+                    if (window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
+                    else window.addEventListener('resize', handleResize);
+                }
+            },
+
+            isFinished: false,
+            _vQueue: [],
+            report: (type) => {
+                if (Candidate.isFinished) return; // 🛑 STOP REPORTING ONCE FINISHED
+                Candidate.violations = (Candidate.violations || 0) + 1;
+
+                // 1. Update UI Immediately
+                const maxV = (Candidate.data.config && Candidate.data.config.max_violations) ? Candidate.data.config.max_violations : 3;
+                const vEl = document.getElementById('ex-violations');
+                if (vEl) {
+                    vEl.innerText = `Warnings: ${Candidate.violations}/${maxV}`;
+                    vEl.style.color = 'var(--danger)';
+                    vEl.style.transform = 'scale(1.1)';
+                    setTimeout(() => vEl.style.transform = 'scale(1)', 200);
+                }
+
+                UI.toast(`SECURITY WARNING: ${type}`, "danger");
+
+                // 2. Batch violations (Reduce RPC frequency)
+                Candidate._vQueue.push(type);
+                if (!Candidate._vTimer) {
+                    Candidate._vTimer = setTimeout(async () => {
+                        const latest = Candidate._vQueue[Candidate._vQueue.length - 1];
+                        const count = Candidate._vQueue.length;
+                        Candidate._vQueue = [];
+                        Candidate._vTimer = null;
+
+                        if (System.state.session_id) {
+                            const { data, error } = await sb.rpc('report_violation', {
+                                p_session_id: System.state.session_id,
+                                p_details: `${latest} (Burst: ${count})`,
+                                p_count: count
+                            });
+
+                            // 3. Handle Disqualification Block
+                            if (data && (data.status === 'DISQUALIFIED' || data.status === 'LOCKED')) {
+                                Candidate.finish(false, data.message);
+                            }
+                        }
+                    }, 2000);
+                }
+            },
+
+            timer: (sec) => {
+                if (Candidate._timer) clearInterval(Candidate._timer);
+                Candidate._timer = setInterval(() => {
+                    sec--;
+                    let m = Math.floor(sec / 60), s = sec % 60;
+                    document.getElementById('ex-timer').innerText = `${m}:${s < 10 ? '0' + s : s}`;
+                    if (sec <= 0) {
+                        clearInterval(Candidate._timer);
+                        Candidate.submitSession(true); // Autosubmit on timeout
+                    }
+                }, 1000);
+            },
+
+            finish: async (normal, msg = "") => {
+                Candidate.isFinished = true; // 🛡️ Set finished flag
+                clearInterval(Candidate._timer);
+                Candidate.isLoading = true;
+
+                // Fetch current config to check for unpublished competition
+                const { data: eData } = await sb.from('events').select('config').eq('id', Candidate.data.event_id).single();
+                const cfg = eData?.config || {};
+
+                // Fetch final score
+                const { data: scoreData } = await sb.from('event_scores')
+                    .select('current_score')
+                    .eq('event_id', Candidate.data.event_id)
+                    .eq('user_id', System.state.user.id)
+                    .single();
+                Candidate.isLoading = false;
+                if (normal) {
+                    await Candidate.log("SUBMITTED", msg || "Exam Finished");
+                }
+                UI.switchView('view-lock');
+                const st = document.getElementById('lock-status');
+                st.innerText = msg || (normal ? "EXAM COMPLETED" : "LOCKED");
+                st.style.color = normal ? "var(--success)" : (msg === "TIME UP" ? "var(--warning)" : "var(--danger)");
+
+                const resultBox = document.getElementById('final-result');
+                const lockLb = document.getElementById('lock-leaderboard-container');
+
+                if (cfg.is_competition && !cfg.results_published) {
+                    resultBox.innerHTML = `
+                        <div style="padding:1rem; border:2px dashed var(--accent); border-radius:12px;">
+                            <h3 style="color:var(--accent); margin-bottom:0.5rem;">⏱️ Results Pending</h3>
+                            <p style="font-size:0.9rem; color:#64748b;">This is a competition round. Your score and rank will be revealed for everyone at the same time by the administrator.</p>
+                            <div style="margin-top:1rem; font-weight:bold; color:var(--success);">Session Securely Recorded ✅</div>
+                        </div>
+                    `;
+                    resultBox.classList.remove('hidden');
+                    lockLb.classList.add('hidden');
+
+                    // Poll for publication
+                    if (Candidate._pubPoll) clearInterval(Candidate._pubPoll);
+                    Candidate._pubPoll = setInterval(async () => {
+                        const { data } = await sb.from('events').select('config').eq('id', Candidate.data.event_id).single();
+                        if (data?.config?.results_published) {
+                            clearInterval(Candidate._pubPoll);
+                            Candidate.finish(normal, msg); // Re-run to show results
+                        }
+                    }, 5000);
+
+                } else {
+                    // Normal or Published
+                    lockLb.classList.remove('hidden');
+                    if (Candidate._pollTimer) clearInterval(Candidate._pollTimer);
+                    Candidate.renderLeaderboard();
+                    Candidate._pollTimer = setInterval(() => Candidate.renderLeaderboard(), 16000);
+
+                    // Check if they actually participated
+                    const participated = (Candidate.data.questions || []).some(q => Candidate.answers[q.id]);
+
+                    if (scoreData) {
+                        resultBox.innerHTML = `
+                            <div style="font-size: 0.9rem; color: #666;">Your Final Score</div>
+                            <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent);">${scoreData.current_score}</div>
+                            <div style="margin-top:10px; font-weight:600; color:var(--success);">${participated ? 'Competition Completed!' : 'Round Ended (No Participation)'}</div>
+                        `;
+                        resultBox.classList.remove('hidden');
+                    } else if (!participated) {
+                        resultBox.innerHTML = `<div style="color:var(--danger); font-weight:bold;">ROUND ENDED<br><small>You did not submit any answers.</small></div>`;
+                        resultBox.classList.remove('hidden');
+                    }
+                }
+
+                // Enable leaderboard view once
+                const btnId = 'btn-lock-lb';
+                if (!document.getElementById(btnId)) {
+                    const btnLb = document.createElement('button');
+                    btnLb.id = btnId;
+                    btnLb.className = 'btn btn-outline';
+                    btnLb.innerText = '🏆 View Results Leaderboard';
+                    btnLb.style.marginTop = '1rem';
+                    btnLb.onclick = () => {
+                        UI.switchView('view-exam');
+                        Candidate.toggleLeaderboard(true);
+                    };
+                    document.getElementById('view-lock').appendChild(btnLb);
+                }
+            },
+
+            // 🔍 IMAGE ZOOM / LIGHTBOX LOGIC
+            currentZoom: 1,
+            openLightbox: (src) => {
+                const lb = document.getElementById('lightbox');
+                const img = document.getElementById('lightbox-img');
+                img.src = src;
+                lb.style.display = 'flex';
+                Candidate.resetZoom();
+                document.body.style.overflow = 'hidden'; // Lock scroll
+            },
+            closeLightbox: () => {
+                document.getElementById('lightbox').style.display = 'none';
+                document.body.style.overflow = 'auto';
+            },
+            adjustZoom: (delta) => {
+                Candidate.currentZoom = Math.min(Math.max(0.5, Candidate.currentZoom + delta), 4);
+                Candidate.applyZoom();
+            },
+            resetZoom: () => {
+                Candidate.currentZoom = 1;
+                Candidate.applyZoom();
+            },
+            applyZoom: () => {
+                const img = document.getElementById('lightbox-img');
+                const level = document.getElementById('zoom-level');
+                img.style.transform = `scale(${Candidate.currentZoom})`;
+                level.innerText = `${Math.round(Candidate.currentZoom * 100)}%`;
+            }
+        };
+
+        const UI = {
+            switchView: (id) => {
+                document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+                document.getElementById(id).classList.remove('hidden');
+            },
+            showTab: (id) => {
+                document.querySelectorAll('#admin-main > div').forEach(d => d.classList.add('hidden'));
+                document.getElementById('tab-' + id).classList.remove('hidden');
+                document.querySelectorAll('.admin-nav div').forEach(d => d.classList.remove('active'));
+                event.target.classList.add('active');
+
+                // Refresh data on tab switch
+                if (id === 'dashboard') Admin.sync();
+                if (id === 'monitor' || id === 'leaderboard') Admin.startLeaderboardPoll();
+                else if (Admin._lbTimer) {
+                    clearInterval(Admin._lbTimer);
+                    Admin._lbTimer = null;
+                }
+            },
+            toggleLoginFields: () => {
+                const isAdmin = document.getElementById('login-role').value === 'admin';
+                document.getElementById('candidate-fields').classList.toggle('hidden', isAdmin);
+                document.getElementById('admin-fields').classList.toggle('hidden', !isAdmin);
+            },
+            toast: (m, type = 'success') => {
+                const t = document.createElement('div'); t.className = 'toast';
+                t.style.background = type === 'success' ? 'var(--success)' : (type === 'warning' ? 'var(--warning)' : 'var(--danger)');
+                t.innerText = m;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 3000);
+            },
+
+            resolveName: (obj) => {
+                if (!obj) return "Anonymous";
+
+                // 1. Direct Field Search (Priority)
+                const candidates = [
+                    obj.team_id,
+                    obj.player_name,
+                    obj.user_email,
+                    obj.full_name,
+                    obj.email,
+                    obj.displayName,
+                    obj.name,
+                    obj.user_id // If user_id is a string, maybe it's the name (fallback)
+                ];
+
+                let found = candidates.find(c => c && typeof c === 'string' && c.length > 2 && !c.includes('-')); // Avoid IDs
+
+                // 2. Metadata / Sub-object Search
+                if (!found && obj.sessions) {
+                    const s = Array.isArray(obj.sessions) ? obj.sessions[0] : obj.sessions;
+                    found = UI.resolveName(s);
+                }
+
+                // 3. Email Hard-Fallback (Final database check)
+                if (!found && (obj.user_email || obj.email)) {
+                    found = (obj.user_email || obj.email).split('@')[0];
+                }
+
+                // 4. Global State Fallback (Local context)
+                if (!found && System.state.user && (obj.user_id === System.state.user.id || obj.id === System.state.user.id)) {
+                    found = System.state.user.email?.split('@')[0];
+                }
+
+                if (!found || found === 'Anonymous' || found === 'CANDIDATE') {
+                    console.log("[UI] Name resolution fallback for:", obj);
+                    return "CANDIDATE";
+                }
+
+                // CLEANING: "team_alpha@nexus.team" -> "ALPHA"
+                let clean = found.toString().split('@')[0].replace('team_', '').replace('Team_', '').toUpperCase();
+                return clean;
+            }
+        }
+
+        // Auto Init
+        window.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                try {
+                    // Restore state
+                    const savedRoom = sessionStorage.getItem('nexquiz_room_id');
+                    if (savedRoom) System.state.room_id = savedRoom;
+                    const savedSession = sessionStorage.getItem('nexquiz_session_id');
+                    if (savedSession) System.state.session_id = savedSession;
+
+                    await System.handleAuth(session.user);
+                } catch (e) {
+                    console.warn("Auto-login failed:", e);
+                    UI.switchView('view-login');
+                }
+            }
+
+            // Version Debug
+            console.log("%c NEXQUIZ REVIVED: v" + APP_VERSION, "color: #ff3e00; font-size: 1.2rem; font-weight: bold;");
+            const foot = document.createElement('div');
+            foot.style = "text-align:center; font-size:0.7rem; opacity:0.3; padding:10px; color:var(--text);";
+            foot.innerHTML = `NexQuiz Command Engine v${APP_VERSION} &copy; 2026`;
+            document.body.appendChild(foot);
+        });
+    </script>
+</body>
+
+</html>
